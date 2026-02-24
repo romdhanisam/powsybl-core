@@ -13,6 +13,7 @@ import com.powsybl.commons.extensions.ExtensionSerDe;
 import com.powsybl.commons.io.DeserializerContext;
 import com.powsybl.commons.io.SerializerContext;
 import com.powsybl.iidm.network.DanglingLine;
+import com.powsybl.iidm.serde.IidmVersion;
 import com.powsybl.iidm.serde.NetworkDeserializerContext;
 import com.powsybl.iidm.serde.NetworkSerializerContext;
 
@@ -39,7 +40,7 @@ public class CgmesDanglingLineBoundaryNodeSerDe extends AbstractExtensionSerDe<D
     public CgmesDanglingLineBoundaryNode read(DanglingLine extendable, DeserializerContext context) {
         NetworkDeserializerContext networkContext = (NetworkDeserializerContext) context;
         boolean isHvdc = networkContext.getReader().readBooleanAttribute("isHvdc");
-        String lineEnergyIdentificationCodeEic = networkContext.getAnonymizer().deanonymizeString(networkContext.getReader().readStringAttribute("lineEnergyIdentificationCodeEic"));
+        String lineEnergyIdentificationCodeEic = networkContext.deanonymizeStringOrDefault("lineEnergyIdentificationCodeEic", IidmVersion.V_1_15);
         networkContext.getReader().readEndNode();
         extendable.newExtension(CgmesDanglingLineBoundaryNodeAdder.class).setHvdc(isHvdc).setLineEnergyIdentificationCodeEic(lineEnergyIdentificationCodeEic).add();
         return extendable.getExtension(CgmesDanglingLineBoundaryNode.class);
