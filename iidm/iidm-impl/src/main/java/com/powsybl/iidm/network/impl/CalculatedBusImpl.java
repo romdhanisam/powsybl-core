@@ -14,6 +14,7 @@ import gnu.trove.list.array.TIntArrayList;
 
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.LongSupplier;
 import java.util.stream.Stream;
 
 /**
@@ -29,13 +30,18 @@ class CalculatedBusImpl extends AbstractBus implements CalculatedBus {
 
     private NodeTerminal terminalRef;
     private final int referenceNode;
+    private final LongSupplier equivalentTerminalVersionSupplier;
+    private long terminalRefVersion;
 
-    CalculatedBusImpl(String id, String name, boolean fictitious, VoltageLevelExt voltageLevel, TIntArrayList nodes, List<NodeTerminal> terminals, Function<Terminal, Bus> getBusFromTerminal) {
+    CalculatedBusImpl(String id, String name, boolean fictitious, VoltageLevelExt voltageLevel, TIntArrayList nodes, List<NodeTerminal> terminals, Function<Terminal, Bus> getBusFromTerminal,
+                      LongSupplier equivalentTerminalVersionSupplier) {
         super(id, name, fictitious, voltageLevel);
         this.terminals = Objects.requireNonNull(terminals);
         this.getBusFromTerminal = Objects.requireNonNull(getBusFromTerminal);
         this.terminalRef = findTerminal(voltageLevel, nodes, terminals);
         this.referenceNode = nodes.isEmpty() ? -1 : nodes.getQuick(0);
+        this.equivalentTerminalVersionSupplier = Objects.requireNonNull(equivalentTerminalVersionSupplier);
+        this.terminalRefVersion = this.equivalentTerminalVersionSupplier.getAsLong();
     }
 
     /**
@@ -56,7 +62,7 @@ class CalculatedBusImpl extends AbstractBus implements CalculatedBus {
         return (NodeTerminal) Networks.getEquivalentTerminal(voltageLevel, nodes.getQuick(0));
     }
 
-    private NodeTerminal findTerminal(VoltageLevelExt voltageLevel, List<NodeTerminal> terminals) {
+    private NodeTerminal findTerminal() {
         if (!terminals.isEmpty()) {
             return terminals.getFirst();
         }
@@ -64,6 +70,15 @@ class CalculatedBusImpl extends AbstractBus implements CalculatedBus {
             return null;
         }
         return (NodeTerminal) Networks.getEquivalentTerminal(voltageLevel, referenceNode);
+    }
+
+    private NodeTerminal getTerminalRefUpToDate() {
+        long currentVersion = equivalentTerminalVersionSupplier.getAsLong();
+        if (terminalRef == null || terminalRefVersion != currentVersion) {
+            terminalRef = findTerminal();
+            terminalRefVersion = currentVersion;
+        }
+        return terminalRef;
     }
 
     private void checkValidity() {
@@ -82,6 +97,7 @@ class CalculatedBusImpl extends AbstractBus implements CalculatedBus {
         voltageLevel = null;
         terminals.clear();
         terminalRef = null;
+        terminalRefVersion = Long.MIN_VALUE;
     }
 
     @Override
@@ -125,8 +141,8 @@ class CalculatedBusImpl extends AbstractBus implements CalculatedBus {
     @Override
     public double getV() {
         checkValidity();
-        //since toggling retained switch should not invalidate cache, the terminal (the equivalent terminal) is resolved in the getter
-        terminalRef = findTerminal(voltageLevel, terminals);
+        //terminalRef = findTerminal(voltageLevel, terminals);
+        terminalRef = getTerminalRefUpToDate();
         return terminalRef == null ? Double.NaN : terminalRef.getV();
     }
 
@@ -142,8 +158,6 @@ class CalculatedBusImpl extends AbstractBus implements CalculatedBus {
     @Override
     public double getAngle() {
         checkValidity();
-        //since toggling retained switch should not invalidate cache, the terminal (the equivalent terminal) is resolved in the getter
-        terminalRef = findTerminal(voltageLevel, terminals);
         return terminalRef == null ? Double.NaN : terminalRef.getAngle();
     }
 
