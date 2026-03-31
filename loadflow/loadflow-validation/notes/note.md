@@ -168,27 +168,61 @@
 ##### Doc
 - core grid model:
 - core grid features: https://powsybl--3849.org.readthedocs.build/projects/powsybl-core/en/3849/grid_features/loadflow_validation.html#branches
+- Clear per terminal rule structure (connected terminal vs disconnected terminal)
+- Distinction of BranchData sources (Line, TWT, TieLine) and TWT specific parameters (phase-angle clock, split shunt)
 ##### Notes (draft)
   - Flows (BranchData) can be constructed from
       - Line Flows => Line specific rules to clarify (TODO)
       - TwoWindingsTransformer Flows => TWT specific rules to clarify (TODO)
       - TieLine Flows => TieLine specific rules to clarify (TODO)
-  - Rule 1: checks disconnected terminal 
-  - Rule 2: checks connected terminal
+  - Rule 1: checks disconnected terminal: P et Q must be NaN or ~0
+  - Rule 2: checks connected terminal: |P - Pcalc| <= ε and |Q - Qcalc| <= ε
 ##### Actions
+- Refactor methods: fromLine, fromTwt, fromTieLine
 - Refactor: `isUndefinedOrZero`
+- `validateTerminalFlow` with context
 - Documentation: add Flows section
-
+    - grid_features/loadflow_validation.md
+    - user/itools/loadflow-validation.md
+- miss parametrized tests per type (Line, TWT, TieLine) :
 ### Transformers (TWT) validation TODO
 
 ##### Doc
+- Adjust doc: only regulating ratio tap changers are validated
+- handling for unexpected/remote regulation terminal
+- Edge case wording for tap boundaries (lowTapPosition / highTapPosition when one increment is unavailable)
 ##### Notes
+- Rule 1: NaN error -> KO 
+- Rule 2: error < 0 => lower-deadband condition 
+- Rule 3: error > 0 => upper-deadband condition 
+- Rule 4: unexpected regulation terminal => warning + skip (should be documented).
+- Refactor: checkTransformerSide
+- Clarify tap boundary behavior:
+  -> Explicit handling when `rhoPreviousStep` or `rhoNextStep` is NaN at low/high tap positions
+- test Edge cases:
+  - lowTapPosition 
+  - highTapPosition
+- No `checkMainComponentOnly` coverage.
+- 
 ##### Actions
 
 ### Transformers3W (TWT 3W) TODO
-
+- --types without TWTS3W ? todo in itools/loadflow-validation.md
 ##### Doc
+- docs still say "To be implemented" while code already validates 3WT legs
+- missing Per leg P/Q vs computed P/Q checks
+- Connected/disconnected leg behavior
+- Internal conversion approach via TwtData ?
 ##### Notes
+- Rule 1 (connected leg): compare P/Q with Pcalc/Qcalc. 
+- Rule 2 (disconnected leg)
+- Extract checkLegConnected and checkLegDisconnected ?
+- Tests
+  - cover connectivity combinations:
+    - 3 connected 
+    - 2 connected / 1 disconnected 
+    - 1 connected / 2 disconnected 
+    - 3 disconnected
 ##### Actions
 
 
